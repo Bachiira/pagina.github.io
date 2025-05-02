@@ -1,97 +1,89 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Hospital más cercano</title>
-       
+    <title>Hospitales Cercanos</title>
     <style>
       #map {
-        height: 500px;
+        height: 100vh;
         width: 100%;
-      }
-      #title{
-        height: 500px;
-        right:1000px;
       }
     </style>
   </head>
   <body>
-    <h2>Hospital más cercano desde tu ubicación</h2>
+    <h2>Hospitales cercanos a tu ubicación</h2>
     <div id="map"></div>
+
     <script>
-      let map, directionsService, directionsRenderer;
+      let map;
 
       function initMap() {
-        directionsService = new google.maps.DirectionsService();
-        directionsRenderer = new google.maps.DirectionsRenderer();
-
-        map = new google.maps.Map(document.getElementById("map"), {
-          zoom: 14,
-          center: { lat: 0, lng: 0 },
-        });
-
-        directionsRenderer.setMap(map);
-
-        // Obtiene la ubicación del usuario
+        // Intentar obtener la ubicación del usuario
         if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(position => {
-            const userLocation = {
-              lat: position.coords.latitude,
-              lng: position.coords.longitude,
-            };
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const userLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+              };
 
-            // Centra el mapa en tu ubicación
-            map.setCenter(userLocation);
+              // Crear el mapa
+              map = new google.maps.Map(document.getElementById("map"), {
+                center: userLocation,
+                zoom: 15,
+              });
 
-            // Busca hospitales cercanos
-            const service = new google.maps.places.PlacesService(map);
-            service.nearbySearch(
-              {
+              // Marcador de la ubicación del usuario
+              new google.maps.Marker({
+                position: userLocation,
+                map,
+                title: "Tu ubicación",
+              });
+
+              // Buscar hospitales cerca con Places API
+              const service = new google.maps.places.PlacesService(map);
+              const request = {
                 location: userLocation,
-                radius: 3000,
-                type: "hospital",
-              },
-              (results, status) => {
-                if (status === google.maps.places.PlacesServiceStatus.OK) {
-                  const hospital = results[0];
-                  const hospitalLocation = hospital.geometry.location;
+                rankBy: google.maps.places.RankBy.DISTANCE,
+                type: 'hospital',
+              };
 
-                  // Muestra marcador del hospital
-                  new google.maps.Marker({
-                    position: hospitalLocation,
-                    map,
-                    title: hospital.name,
-                  });
-
-                  // Traza la ruta
-                  directionsService.route(
-                    {
-                      origin: userLocation,
-                      destination: hospitalLocation,
-                      travelMode: google.maps.TravelMode.DRIVING,
-                    },
-                    (response, status) => {
-                      if (status === "OK") {
-                        directionsRenderer.setDirections(response);
-                      } else {
-                        alert("No se pudo generar la ruta: " + status);
-                      }
-                    }
+              service.nearbySearch(request, (results, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
+                  // Filtrar resultados cuyo nombre incluye la palabra "hospital"
+                  const hospitales = results.filter(place =>
+                    place.name.toLowerCase().includes("hospital")
                   );
+
+                  if (hospitales.length > 0) {
+                    hospitales.forEach(place => {
+                      new google.maps.Marker({
+                        position: place.geometry.location,
+                        map,
+                        title: place.name,
+                      });
+                    });
+                  } else {
+                    alert("No se encontraron hospitales cercanos.");
+                  }
+                } else {
+                  alert("No se encontraron hospitales cercanos.");
                 }
-              }
-            );
-          });
+              });
+            },
+            () => {
+              alert("No se pudo obtener tu ubicación.");
+            }
+          );
         } else {
-          alert("Tu navegador no permite geolocalización.");
+          alert("Tu navegador no soporta geolocalización.");
         }
       }
     </script>
 
-    <!-- Carga la API de Google Maps con Places y Directions -->
     <script
-      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBqqUsryxm1rcpL9lz0ESrzP0cW_IOMOdw&libraries=places&callback=initMap"
       async
       defer
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBqqUsryxm1rcpL9lz0ESrzP0cW_IOMOdw&libraries=places&callback=initMap"
     ></script>
   </body>
 </html>
