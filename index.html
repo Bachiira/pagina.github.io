@@ -36,7 +36,7 @@
               title: "Tu ubicación",
             });
   
-            buscarHospitales(userLocation, true);
+            buscarHospitales(userLocation, true); // Primera búsqueda
           },
           () => {
             alert("No se pudo obtener tu ubicación.");
@@ -47,6 +47,21 @@
       }
     }
   
+    function calcularDistancia(loc1, loc2) {
+      const R = 6371e3; // metros
+      const φ1 = loc1.lat * Math.PI/180;
+      const φ2 = loc2.lat * Math.PI/180;
+      const Δφ = (loc2.lat - loc1.lat) * Math.PI/180;
+      const Δλ = (loc2.lng - loc1.lng) * Math.PI/180;
+  
+      const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ/2) * Math.sin(Δλ/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  
+      return R * c;
+    }
+  
     function buscarHospitales(userLocation, cercano = true) {
       const service = new google.maps.places.PlacesService(map);
   
@@ -54,20 +69,31 @@
         location: userLocation,
         ...(cercano
           ? { rankBy: google.maps.places.RankBy.DISTANCE }
-          : { radius: 37000 }),
+          : { radius: 10000 }), // Aumentado para mejor alcance
         type: 'hospital',
       };
   
       service.nearbySearch(request, (results, status) => {
         if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
-          const hospitales = results.filter(place =>
+          let hospitales = results.filter(place =>
             place.types.includes("hospital") &&
             place.name.toLowerCase().includes("hospital") &&
             !place.name.toLowerCase().includes("veterinaria") &&
             !place.name.toLowerCase().includes("dental") &&
-            !place.name.toLowerCase().includes("consultorio")&&
-            place.user_ratings_total > 10 // Opcional, pero ayuda a filtrar los "reales"
+            !place.name.toLowerCase().includes("consultorio") &&
+            place.user_ratings_total > 5
           );
+  
+          // Si es la búsqueda con radio, ordenar por distancia manualmente
+          if (!cercano) {
+            hospitales = hospitales.map(h => {
+              h.distancia = calcularDistancia(userLocation, {
+                lat: h.geometry.location.lat(),
+                lng: h.geometry.location.lng()
+              });
+              return h;
+            }).sort((a, b) => a.distancia - b.distancia);
+          }
   
           if (hospitales.length > 0) {
             const hospitalCercano = hospitales[0];
@@ -95,9 +121,8 @@
                 console.error("No se pudo trazar la ruta:", status);
               }
             });
-  
           } else if (cercano) {
-            buscarHospitales(userLocation, false);
+            buscarHospitales(userLocation, false); // segunda búsqueda con radius
           } else {
             alert("No se encontraron hospitales cercanos.");
           }
@@ -110,6 +135,7 @@
       });
     }
   </script>
+  
   
   
     <script
