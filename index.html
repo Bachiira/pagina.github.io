@@ -54,7 +54,7 @@
         location: userLocation,
         ...(cercano
           ? { rankBy: google.maps.places.RankBy.DISTANCE }
-          : { radius: 5000 }),
+          : { radius: 100000 }),
         type: 'hospital',
       };
   
