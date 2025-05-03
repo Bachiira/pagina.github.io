@@ -13,93 +13,100 @@
   <div class="map-container">
     <div id="map"></div>
   </div>
- <script>
-  let map;
-
-  function initMap() {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const userLocation = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-
-          // Crear el mapa
-          map = new google.maps.Map(document.getElementById("map"), {
-            center: userLocation,
-            zoom: 15,
-          });
-
-          // Marcador del usuario
-          new google.maps.Marker({
-            position: userLocation,
-            map,
-            title: "Tu ubicación",
-          });
-
-          // Buscar hospitales
-          const service = new google.maps.places.PlacesService(map);
-          const request = {
-            location: userLocation,
-            rankBy: google.maps.places.RankBy.DISTANCE,
-            type: 'hospital',
-          };
-
-          service.nearbySearch(request, (results, status) => {
-            if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
-              const hospitales = results.filter(place =>
-                place.name.toLowerCase().includes("hospital")
-              );
-
-              if (hospitales.length > 0) {
-                // Hospital más cercano
-                const hospitalCercano = hospitales[0];
-
-                // Marcador del hospital más cercano
-                new google.maps.Marker({
-                  position: hospitalCercano.geometry.location,
-                  map,
-                  title: hospitalCercano.name,
-                });
-
-                // Dibujar la ruta
-                const directionsService = new google.maps.DirectionsService();
-                const directionsRenderer = new google.maps.DirectionsRenderer();
-                directionsRenderer.setMap(map);
-
-                const directionsRequest = {
-                  origin: userLocation,
-                  destination: hospitalCercano.geometry.location,
-                  travelMode: google.maps.TravelMode.DRIVING,
-                };
-
-                directionsService.route(directionsRequest, (result, status) => {
-                  if (status === google.maps.DirectionsStatus.OK) {
-                    directionsRenderer.setDirections(result);
-                  } else {
-                    console.error("No se pudo trazar la ruta:", status);
-                  }
-                });
-              } else {
-                alert("No se encontraron hospitales cercanos.");
-              }
-            } else {
-              alert("No se encontraron hospitales cercanos.");
-            }
-          });
-
-        },
-        () => {
-          alert("No se pudo obtener tu ubicación.");
-        }
-      );
-    } else {
-      alert("Tu navegador no soporta geolocalización.");
+  <script>
+    let map;
+  
+    function initMap() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const userLocation = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            };
+  
+            map = new google.maps.Map(document.getElementById("map"), {
+              center: userLocation,
+              zoom: 15,
+            });
+  
+            new google.maps.Marker({
+              position: userLocation,
+              map,
+              title: "Tu ubicación",
+            });
+  
+            buscarHospitales(userLocation, true); // iniciar búsqueda
+          },
+          () => {
+            alert("No se pudo obtener tu ubicación.");
+          }
+        );
+      } else {
+        alert("Tu navegador no soporta geolocalización.");
+      }
     }
-  }
-</script>
-
+  
+    function buscarHospitales(userLocation, cercano = true) {
+      const service = new google.maps.places.PlacesService(map);
+  
+      const request = {
+        location: userLocation,
+        ...(cercano
+          ? { rankBy: google.maps.places.RankBy.DISTANCE }
+          : { radius: 5000 }),
+        type: 'hospital',
+      };
+  
+      service.nearbySearch(request, (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
+          const hospitales = results.filter(place =>
+            place.name.toLowerCase().includes("hospital")
+          );
+  
+          if (hospitales.length > 0) {
+            const hospitalCercano = hospitales[0];
+  
+            new google.maps.Marker({
+              position: hospitalCercano.geometry.location,
+              map,
+              title: hospitalCercano.name,
+            });
+  
+            const directionsService = new google.maps.DirectionsService();
+            const directionsRenderer = new google.maps.DirectionsRenderer();
+            directionsRenderer.setMap(map);
+  
+            const directionsRequest = {
+              origin: userLocation,
+              destination: hospitalCercano.geometry.location,
+              travelMode: google.maps.TravelMode.DRIVING,
+            };
+  
+            directionsService.route(directionsRequest, (result, status) => {
+              if (status === google.maps.DirectionsStatus.OK) {
+                directionsRenderer.setDirections(result);
+              } else {
+                console.error("No se pudo trazar la ruta:", status);
+              }
+            });
+  
+          } else if (cercano) {
+            // Reintentar con radius
+            buscarHospitales(userLocation, false);
+          } else {
+            alert("No se encontraron hospitales cercanos.");
+          }
+  
+        } else if (cercano) {
+          buscarHospitales(userLocation, false);
+        } else {
+          alert("No se encontraron hospitales cercanos.");
+        }
+      });
+    }
+  </script>
+  
     <script
       async
       defer
