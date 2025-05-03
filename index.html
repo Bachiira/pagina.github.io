@@ -36,7 +36,7 @@
               title: "Tu ubicación",
             });
   
-            buscarHospitales(userLocation, true); // iniciar búsqueda
+            buscarHospitales(userLocation, true);
           },
           () => {
             alert("No se pudo obtener tu ubicación.");
@@ -61,7 +61,12 @@
       service.nearbySearch(request, (results, status) => {
         if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
           const hospitales = results.filter(place =>
-            place.name.toLowerCase().includes("hospital")
+            place.types.includes("hospital") &&
+            place.name.toLowerCase().includes("hospital") &&
+            !place.name.toLowerCase().includes("veterinaria") &&
+            !place.name.toLowerCase().includes("dental") &&
+            !place.name.toLowerCase().includes("consultorio")&&
+            place.user_ratings_total > 10 // Opcional, pero ayuda a filtrar los "reales"
           );
   
           if (hospitales.length > 0) {
@@ -92,7 +97,6 @@
             });
   
           } else if (cercano) {
-            // Reintentar con radius
             buscarHospitales(userLocation, false);
           } else {
             alert("No se encontraron hospitales cercanos.");
@@ -106,6 +110,7 @@
       });
     }
   </script>
+  
   
     <script
       async
