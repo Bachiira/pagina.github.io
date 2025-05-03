@@ -36,72 +36,59 @@
               title: "Tu ubicación",
             });
   
-            buscarHospitales(userLocation, true); // Primera búsqueda
+            buscarCentrosSalud(userLocation, true); // Primer intento con rankBy
           },
-          () => {
-            alert("No se pudo obtener tu ubicación.");
-          }
+          () => alert("No se pudo obtener tu ubicación.")
         );
       } else {
         alert("Tu navegador no soporta geolocalización.");
       }
     }
+
   
-    function calcularDistancia(loc1, loc2) {
-      const R = 6371e3; // metros
-      const φ1 = loc1.lat * Math.PI/180;
-      const φ2 = loc2.lat * Math.PI/180;
-      const Δφ = (loc2.lat - loc1.lat) * Math.PI/180;
-      const Δλ = (loc2.lng - loc1.lng) * Math.PI/180;
-  
-      const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-                Math.cos(φ1) * Math.cos(φ2) *
-                Math.sin(Δλ/2) * Math.sin(Δλ/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  
-      return R * c;
-    }
-  
-    function buscarHospitales(userLocation, cercano = true) {
+    function buscarCentrosSalud(userLocation, cercano = true) {
       const service = new google.maps.places.PlacesService(map);
   
       const request = {
         location: userLocation,
         ...(cercano
           ? { rankBy: google.maps.places.RankBy.DISTANCE }
-          : { radius: 10000 }), // Aumentado para mejor alcance
+          : { radius: 10000 }),
         type: 'hospital',
+        keyword: 'hospital cesfam centro de salud',
       };
   
       service.nearbySearch(request, (results, status) => {
         if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
-          let hospitales = results.filter(place =>
-            place.types.includes("hospital") &&
-            place.name.toLowerCase().includes("hospital") &&
-            !place.name.toLowerCase().includes("veterinaria") &&
-            !place.name.toLowerCase().includes("dental") &&
-            !place.name.toLowerCase().includes("consultorio") &&
-            place.user_ratings_total > 5
-          );
+          let centros = results.filter(place => {
+            const nombre = place.name.toLowerCase();
+            return (
+              (nombre.includes("hospital") ||
+               nombre.includes("cesfam") ||
+               nombre.includes("centro de salud")) &&
+              !nombre.includes("veterinaria") &&
+              !nombre.includes("dental")
+            );
+          });
   
-          // Si es la búsqueda con radio, ordenar por distancia manualmente
+          // Ordenar por distancia si es búsqueda con radio
           if (!cercano) {
-            hospitales = hospitales.map(h => {
-              h.distancia = calcularDistancia(userLocation, {
-                lat: h.geometry.location.lat(),
-                lng: h.geometry.location.lng()
+            centros = centros.map(c => {
+              c.distancia = calcularDistancia(userLocation, {
+                lat: c.geometry.location.lat(),
+                lng: c.geometry.location.lng(),
               });
-              return h;
+              return c;
             }).sort((a, b) => a.distancia - b.distancia);
           }
   
-          if (hospitales.length > 0) {
-            const hospitalCercano = hospitales[0];
+          if (centros.length > 0) {
+            const centroCercano = centros[0];
   
             new google.maps.Marker({
-              position: hospitalCercano.geometry.location,
+              position: centroCercano.geometry.location,
               map,
-              title: hospitalCercano.name,
+              title: centroCercano.name,
             });
   
             const directionsService = new google.maps.DirectionsService();
@@ -110,7 +97,7 @@
   
             const directionsRequest = {
               origin: userLocation,
-              destination: hospitalCercano.geometry.location,
+              destination: centroCercano.geometry.location,
               travelMode: google.maps.TravelMode.DRIVING,
             };
   
@@ -121,20 +108,22 @@
                 console.error("No se pudo trazar la ruta:", status);
               }
             });
-          } else if (cercano) {
-            buscarHospitales(userLocation, false); // segunda búsqueda con radius
-          } else {
-            alert("No se encontraron hospitales cercanos.");
-          }
   
+          } else if (cercano) {
+            // Si no encuentra nada cercano, intenta con radius
+            buscarCentrosSalud(userLocation, false);
+          } else {
+            alert("No se encontraron hospitales ni CESFAM cercanos.");
+          }
         } else if (cercano) {
-          buscarHospitales(userLocation, false);
+          buscarCentrosSalud(userLocation, false);
         } else {
-          alert("No se encontraron hospitales cercanos.");
+          alert("No se encontraron hospitales ni CESFAM cercanos.");
         }
       });
     }
   </script>
+  
   
   
   
