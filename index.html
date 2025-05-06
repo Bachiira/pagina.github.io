@@ -63,11 +63,11 @@
           let centros = results.filter(place => {
             const nombre = place.name.toLowerCase();
             return (
-              (nombre.includes("hospital") ||
-               nombre.includes("cesfam") ||
-               nombre.includes("clinica") ||
-               nombre.includes("centro de salud")) &&
-              !nombre.includes("veterinaria") &&
+              (nombre.includes("hospital")) ||
+              nombre.includes("cesfam") ||
+              nombre.includes("clinica") ||
+              nombre.includes("centro de salud") &&
+              !nombre.includes("veterinaria"),
               !nombre.includes("dental")
             );
           });
