@@ -76,7 +76,7 @@
             let centros = results.filter(place => {
               const nombre = place.name.toLowerCase();
               return (
-                (nombre.includes("hospital") ||
+                nombre.includes("hospital")
             });
 
             if (!cercano) {
